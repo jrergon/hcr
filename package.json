@@ -1,0 +1,38 @@
+{
+  "name": "hcr",
+  "version": "0.9.0",
+  "description": "Easy To Use Web Crawler",
+  "main": "Crawler.js",
+  "author": "Huseyin Ergon",
+  "license": "ISC",
+  "keywords": [
+    "crawler",
+    "crawling",
+    "web spider",
+    "http",
+    "simple",
+    "util",
+    "utility"
+  ],
+  "repository": {
+		"type": "git",
+		"url": "https://github.com/jrergon/hcr.git"
+	},
+	"bugs": {
+		"url": "https://github.com/jrergon/hcr/issues"
+	},
+	"homepage": "https://github.com/jrergon/hcr",
+  "dependencies": {
+    "bottleneck": "^2.12.2",
+    "chai": "^4.2.0",
+    "cheerio": "^1.0.0-rc.2",
+    "md5": "^2.2.1",
+    "mocha": "^5.2.0",
+    "request": "^2.88.0",
+    "valid-url": "^1.0.9"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
