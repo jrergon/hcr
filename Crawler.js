@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 var Bottleneck = require('bottleneck');
 var md5 = require('md5');
 var validUrl = require('valid-url');
+var Url = require('url');
 
 var Crawler = function(options, callback) {
 	this.options = options;
@@ -60,7 +61,7 @@ Crawler.prototype.toObject = function(parseList, object) {
 
 Crawler.prototype.recursiveToObject = function(parseList, object) {
 	var self = this;
-
+	
 	var cb = function(err, response, body) {
 		if(err) {
 			self.callback(err, response, body);
@@ -83,13 +84,13 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 
 		self.callback(err, response, responseObject);
 
-		var links = getLinks(body);
+		var links = getLinks(body, response.request.uri.host);
 		
 		self.recursiveToObject(links, object);
 	};
 
 	for(var i = 0; i < parseList.length; i++) {
-		if(this.parsedPages[parseList[i]] != true) {
+		if(this.parsedPages[md5(parseList[i])] != true) {
 			var opts = {
 				url: encodeURI(parseList[i]),
 				headers: this.options.headers,
@@ -102,13 +103,13 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 	}
 };
 
-var getLinks = function(body) {
+var getLinks = function(body, host) {
 	const $$ = cheerio.load(body);
 	var links = [];
 	
 	$$('a').each(function() {
 		var url = this.attribs.href;
-		if(validUrl.isUri(url)) {
+		if(validUrl.isUri(url) && Url.parse(url).hostname == host) {
 			links.push(this.attribs.href); 
 		}
 	});
