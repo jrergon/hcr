@@ -67,26 +67,30 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 			self.callback(err, response, body);
 		}
 
-		const $$ = cheerio.load(body);
-		var responseObject = {};
-
-		for(var key in object) {
-			var selector = object[key].selector;
-			var func = object[key].func;
-			var args = object[key].args;
-
-			if(args) {
-				responseObject[key] = $$(selector)[func](...args);
-			}else {
-				responseObject[key] = $$(selector)[func]();
-			}
-		}
-
-		self.callback(err, response, responseObject);
-
-		var links = getLinks(body, response.request.uri.host);
+		var contentType = response.headers['content-type'].split(' ')[0];
 		
-		self.recursiveToObject(links, object);
+		if(contentType == 'text/html;') {
+			const $$ = cheerio.load(body);
+			var responseObject = {};
+
+			for(var key in object) {
+				var selector = object[key].selector;
+				var func = object[key].func;
+				var args = object[key].args;
+
+				if(args) {
+					responseObject[key] = $$(selector)[func](...args);
+				}else {
+					responseObject[key] = $$(selector)[func]();
+				}
+			}
+
+			self.callback(err, response, responseObject);
+			var links = getLinks(body, response.request.uri.href,
+				 response.request.uri.host);
+			
+			self.recursiveToObject(links, object);
+		}
 	};
 
 	for(var i = 0; i < parseList.length; i++) {
@@ -103,17 +107,20 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 	}
 };
 
-var getLinks = function(body, host) {
+var getLinks = function(body, currentLink, host) {
 	const $$ = cheerio.load(body);
 	var links = [];
 	
 	$$('a').each(function() {
 		var url = this.attribs.href;
+		var relativePath = currentLink + '/' + url;
 		if(validUrl.isUri(url) && Url.parse(url).hostname == host) {
-			links.push(this.attribs.href); 
+			links.push(url); 
+		}else if(validUrl.isUri(relativePath) && !validUrl.isUri(url)) {
+			links.push(relativePath);
 		}
 	});
-
+	
 	return links;
 };
 
