@@ -1,6 +1,6 @@
 {
   "name": "hcr",
-  "version": "0.9.5",
+  "version": "0.9.7",
   "description": "Easy To Use Web Crawler",
   "main": "Crawler.js",
   "author": "Huseyin Ergon",

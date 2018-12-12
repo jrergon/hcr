@@ -87,7 +87,7 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 
 			self.callback(err, response, responseObject);
 			var links = getLinks(body, response.request.uri.href,
-				 response.request.uri.host);
+				response.request.uri.host);
 			
 			self.recursiveToObject(links, object);
 		}
@@ -113,11 +113,12 @@ var getLinks = function(body, currentLink, host) {
 	
 	$$('a').each(function() {
 		var url = this.attribs.href;
-		var relativePath = currentLink + '/' + url;
-		if(validUrl.isUri(url) && Url.parse(url).hostname == host) {
-			links.push(url); 
-		}else if(validUrl.isUri(relativePath) && !validUrl.isUri(url)) {
-			links.push(relativePath);
+		if(url) {
+			var fullPath = Url.resolve(currentLink, url);
+			if(validUrl.isUri(fullPath) && 
+				Url.parse(fullPath).hostname == host) {
+				links.push(fullPath); 
+			}
 		}
 	});
 	
