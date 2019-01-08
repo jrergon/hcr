@@ -37,11 +37,17 @@ Crawler.prototype.toObject = function(parseList, object) {
 		for(var key in object) {
 			var selector = object[key].selector;
 			var func = object[key].func;
+			var prop = object[key].prop;
 			var args = object[key].args;
-			if(args) {
-				responseObject[key] = $$(selector)[func](...args);
+
+			if(func) {
+				if(args) {
+					responseObject[key] = $$(selector)[func](...args);
+				}else {
+					responseObject[key] = $$(selector)[func]();
+				}
 			}else {
-				responseObject[key] = $$(selector)[func]();
+				responseObject[key] = $$(selector)[prop];
 			}
 		}
 
@@ -77,11 +83,16 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 				var selector = object[key].selector;
 				var func = object[key].func;
 				var args = object[key].args;
+				var prop = object[key].prop;
 
-				if(args) {
-					responseObject[key] = $$(selector)[func](...args);
+				if(func) {
+					if(args) {
+						responseObject[key] = $$(selector)[func](...args);
+					}else {
+						responseObject[key] = $$(selector)[func]();
+					}
 				}else {
-					responseObject[key] = $$(selector)[func]();
+					responseObject[key] = $$(selector)[prop];
 				}
 			}
 
