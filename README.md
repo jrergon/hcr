@@ -99,3 +99,23 @@ var object = {
 
 crawler.recursiveToObject(['site1.com', 'site2.com'], object);
 ```
+
+```js
+var opts = {
+	reservoir: 100,
+  	reservoirRefreshInterval: 60 * 1000 
+};
+
+var crawler = new Crawler(opts, callback);
+
+var regex = /[A-Z]/g;
+
+var object = {
+	'Name': {
+		selector: '#span',
+		prop: 'textContent'
+	}
+};
+
+crawler.recursiveToObject(['site1.com', 'site2.com'], regex, object);
+```
