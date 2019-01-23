@@ -129,34 +129,37 @@ Crawler.prototype.recursiveToObject = function(parseList, regex, object) {
 		var contentType = response.headers['content-type'].split(' ')[0];
 		
 		if(contentType == 'text/html;') {
-			const $$ = cheerio.load(body);
-			var responseObject = {};
+			if(response.request.uri.href.match(regex)) {
+				const $$ = cheerio.load(body);
+				var responseObject = {};
 
-			for(var key in object) {
-				var selector = object[key].selector;
-				var func = object[key].func;
-				var args = object[key].args;
-				var prop = object[key].prop;
+				for(var key in object) {
+					var selector = object[key].selector;
+					var func = object[key].func;
+					var args = object[key].args;
+					var prop = object[key].prop;
 
-				if(func) {
-					if(args) {
-						responseObject[key] = $$(selector)[func](...args);
+					if(func) {
+						if(args) {
+							responseObject[key] = $$(selector)[func](...args);
+						}else {
+							responseObject[key] = $$(selector)[func]();
+						}
 					}else {
-						responseObject[key] = $$(selector)[func]();
+						responseObject[key] = $$(selector)[prop];
 					}
-				}else {
-					responseObject[key] = $$(selector)[prop];
 				}
-			}
 
-			self.callback(err, response, responseObject);
-			var links = getRegexLinks(body, regex, response.request.uri.href,
+				self.callback(err, response, responseObject);
+			}
+			
+			var links = getLinks(body, response.request.uri.href,
 				response.request.uri.host);
 			
 			self.recursiveToObject(links, object);
 		}
 	};
-
+	
 	for(var i = 0; i < parseList.length; i++) {
 		if(this.parsedPages[md5(parseList[i])] != true) {
 			var opts = {
@@ -181,25 +184,6 @@ var getLinks = function(body, currentLink, host) {
 			var fullPath = Url.resolve(currentLink, url);
 			if(validUrl.isUri(fullPath) && 
 				Url.parse(fullPath).hostname == host) {
-				links.push(fullPath); 
-			}
-		}
-	});
-	
-	return links;
-};
-
-var getRegexLinks = function(body, regex, currentLink, host) {
-	const $$ = cheerio.load(body);
-	var links = [];
-	
-	$$('a').each(function() {
-		var url = this.attribs.href;
-		if(url) {
-			var fullPath = Url.resolve(currentLink, url);
-			if(validUrl.isUri(fullPath) && 
-				Url.parse(fullPath).hostname == host &&
-				fullPath.match(regex).length > 0) {
 				links.push(fullPath); 
 			}
 		}
