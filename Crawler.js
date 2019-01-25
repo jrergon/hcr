@@ -4,13 +4,24 @@ var Bottleneck = require('bottleneck');
 var md5 = require('md5');
 var validUrl = require('valid-url');
 var Url = require('url');
+var events = require('events');
+var util = require('util');
 
 var Crawler = function(options, callback) {
+	events.EventEmitter.call( this );
+	var self = this;
 	this.options = options;
 	this.callback = callback;
-	this.limitter = new Bottleneck(setLimitterOptions(options));
+	this.limiter = new Bottleneck(setLimiterOptions(options));
 	this.parsedPages = [];
+	this.limiter.on('empty', function(){
+		self.emit('completed');
+	});
 };
+
+Crawler.prototype = new events.EventEmitter;
+
+util.inherits(Crawler, events.EventEmitter);
 
 Crawler.prototype.getPage = function(parseList) {
 	for(var i = 0; i < parseList.length; i++) {
@@ -20,7 +31,7 @@ Crawler.prototype.getPage = function(parseList) {
 			timeout: this.options.timeout
 		};
 		
-		this.limitter.submit(request, opts, this.callback);
+		this.limiter.submit(request, opts, this.callback);
 	}
 };
 
@@ -61,11 +72,12 @@ Crawler.prototype.toObject = function(parseList, object) {
 			timeout: this.options.timeout
 		};
 
-		this.limitter.submit(request, opts, cb);
+		this.limiter.submit(request, opts, cb);
 	}
 };
 
 Crawler.prototype.recursiveToObject = function(parseList, object) {
+	this.limiter.removeAllListeners();
 	var self = this;
 	
 	var cb = function(err, response, body) {
@@ -75,7 +87,7 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 
 		var contentType = response.headers['content-type'].split(' ')[0];
 		
-		if(contentType == 'text/html;') {
+		if(contentType.includes('text/html')) {
 			const $$ = cheerio.load(body);
 			var responseObject = {};
 
@@ -97,10 +109,21 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 			}
 
 			self.callback(err, response, responseObject);
-			var links = getLinks(body, response.request.uri.href,
-				response.request.uri.host);
-			
-			self.recursiveToObject(links, object);
+			var host = response.request.uri.host;
+			if(host.includes(':')) {
+				host = response.request.uri.host.split(':')[0];
+			}
+
+			var links = getLinks(body, response.request.uri.href, host);
+			if(links.length < 1 && self.limiter.empty()) {
+				self.emit('completed');
+			}else {
+				self.limiter.on('empty', function(){
+					self.emit('completed');
+				});
+				
+				self.recursiveToObject(links, object);
+			}
 		}
 	};
 
@@ -113,12 +136,13 @@ Crawler.prototype.recursiveToObject = function(parseList, object) {
 			};
 
 			this.parsedPages[md5(parseList[i])] = true;
-			this.limitter.submit(request, opts, cb);
+			this.limiter.submit(request, opts, cb);
 		}
 	}
 };
 
-Crawler.prototype.recursiveToObject = function(parseList, regex, object) {
+Crawler.prototype.recursiveRegexToObject = function(parseList, regex, object) {
+	this.limiter.removeAllListeners();
 	var self = this;
 	
 	var cb = function(err, response, body) {
@@ -128,8 +152,30 @@ Crawler.prototype.recursiveToObject = function(parseList, regex, object) {
 
 		var contentType = response.headers['content-type'].split(' ')[0];
 		
-		if(contentType == 'text/html;') {
+		if(contentType.includes('text/html')) {
 			if(response.request.uri.href.match(regex)) {
+				const $$ = cheerio.load(body);
+				var responseObject = {};
+
+				for(var key in object) {
+					var selector = object[key].selector;
+					var func = object[key].func;
+					var args = object[key].args;
+					var prop = object[key].prop;
+
+					if(func) {
+						if(args) {
+							responseObject[key] = $$(selector)[func](...args);
+						}else {
+							responseObject[key] = $$(selector)[func]();
+						}
+					}else {
+						responseObject[key] = $$(selector)[prop];
+					}
+				}
+
+				self.callback(err, response, responseObject);
+			}else {
 				const $$ = cheerio.load(body);
 				var responseObject = {};
 
@@ -153,10 +199,22 @@ Crawler.prototype.recursiveToObject = function(parseList, regex, object) {
 				self.callback(err, response, responseObject);
 			}
 			
-			var links = getLinks(body, response.request.uri.href,
-				response.request.uri.host);
+			var host = response.request.uri.host;
+			if(host.includes(':')) {
+				host = response.request.uri.host.split(':')[0];
+			}
+
+			var links = getLinks(body, response.request.uri.href, host);
 			
-			self.recursiveToObject(links, object);
+			if(links.length < 1 && self.limiter.empty()) {
+				self.emit('completed');
+			}else {
+				self.limiter.on('empty', function(){
+					self.emit('completed');
+				});
+
+				self.recursiveRegexToObject(links, regex, object);
+			}
 		}
 	};
 	
@@ -169,7 +227,7 @@ Crawler.prototype.recursiveToObject = function(parseList, regex, object) {
 			};
 
 			this.parsedPages[md5(parseList[i])] = true;
-			this.limitter.submit(request, opts, cb);
+			this.limiter.submit(request, opts, cb);
 		}
 	}
 };
@@ -182,6 +240,7 @@ var getLinks = function(body, currentLink, host) {
 		var url = this.attribs.href;
 		if(url) {
 			var fullPath = Url.resolve(currentLink, url);
+			
 			if(validUrl.isUri(fullPath) && 
 				Url.parse(fullPath).hostname == host) {
 				links.push(fullPath); 
@@ -192,7 +251,7 @@ var getLinks = function(body, currentLink, host) {
 	return links;
 };
 
-var setLimitterOptions = function(options) {
+var setLimiterOptions = function(options) {
 	var opts = {};
 
 	if(options.maxConcurrent) {

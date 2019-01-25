@@ -117,5 +117,19 @@ var object = {
 	}
 };
 
-crawler.recursiveToObject(['site1.com', 'site2.com'], regex, object);
+crawler.recursiveRegexToObject(['site1.com', 'site2.com'], regex, object);
+```
+
+```js
+var opts = {
+	reservoir: 100,
+  	reservoirRefreshInterval: 60 * 1000 
+};
+
+var crawler = new Crawler(opts, callback);
+var doneCallback = function() {
+	// crawling done
+};
+
+crawler.on('completed', doneCallback);
 ```
